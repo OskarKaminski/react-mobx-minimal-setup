@@ -1,4 +1,4 @@
-# react-mobx-minimal-setup
+# React & Mobx - minimal setup
 
 This is a minimal setup for applications, that would like to utilize react with a fast, reliable, and scalable solution for state management.
 
