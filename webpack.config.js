@@ -5,7 +5,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 process.env.NODE_ENV = 'development'
 
 module.exports = {
-    devtool: 'eval',
+    devtool: 'eval-source-map',
     mode: 'development',
     entry: [
         './src/index'
@@ -29,5 +29,11 @@ module.exports = {
             use: ['babel-loader'],
             include: path.join(__dirname, 'src')
         }]
+    },
+    devServer: {
+        historyApiFallback: true,
+        host: '0.0.0.0',
+        hot: true,
+        port: 8888
     }
 }

@@ -1,19 +1,16 @@
-import React from "react";
-import { observer } from "mobx-react";
-import AppStore from './App.store.js'
+import React from "react"
+import { observer } from "mobx-react"
+import Items from './components/Items'
+import ctrl from './App.store'
 
 @observer
-export default class App extends React.Component {
-    onClick() {
-        AppStore.number++
-    }
-
+export default class App extends React.PureComponent {
     render() {
         return (
             <div>
-                {AppStore.number}
-                <div onClick={this.onClick}>Click me</div>
+                <Items/>
+                <div onClick={ctrl.reloadItems}>Reload</div>
             </div>
-        );
+        )
     }
 }
