@@ -1,23 +1,21 @@
 var path = require('path')
-var webpack = require('webpack')
+// var webpack = require('webpack')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 process.env.NODE_ENV = 'development'
 
 module.exports = {
-    devtool: 'eval',
-    mode: 'development',
-    entry: [
-        './src/index'
-    ],
+    entry: './src/index',
     output: {
         path: path.join(__dirname, 'dist'),
-        filename: 'bundle.js'
+        filename: '[name].[contenthash].js'
     },
+    devtool: 'eval',
+    mode: 'development',
     plugins: [
         new webpack.HotModuleReplacementPlugin(),
         new HtmlWebpackPlugin({
-            title: 'Mobx + React'
+            title: 'Oskar\'s starter'
         })
     ],
     resolve: {
