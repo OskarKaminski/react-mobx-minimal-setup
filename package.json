@@ -1,0 +1,12 @@
+{
+  "name": "oskar-starter",
+  "private": true,
+  "devDependencies": {
+    "lerna": "^6.4.1"
+  },
+  "scripts": {
+    "start": "lerna run --parallel start",
+    "build": "lerna run build"
+  },
+  "workspaces": ["apps/*"]
+}

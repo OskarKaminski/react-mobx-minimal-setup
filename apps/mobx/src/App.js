@@ -5,7 +5,7 @@ import { createGlobalStyle } from 'styled-components'
 import HomePage from './pages/HomePage/HomePage'
 import OtherPage from './pages/OtherPage/OtherPage'
 import { BrowserRouter as Router, NavLink, Route, Routes } from 'react-router-dom'
-import { Navigation } from '../../../src/App.styles'
+import { Navigation } from './App.styles'
 
 const GlobalStyle = createGlobalStyle`
   body {
