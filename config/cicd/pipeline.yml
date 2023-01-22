@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CI/CD for Oskar's Starter
+
+Parameters:
+  # Buckets
+  DevBucketName:
+    Default: 'starter.static-hosting.dev'
+    Description: 'A name for dev bucket'
+    Type: 'String'
+  PipelineArtifactsBucketName:
+    Default: 'starter.pipeline-artifacts'
+    Description: 'A name for bucket storing pipeline artifacts'
+    Type: 'String'
+
+  # Repository details
+  RepositoryAccountName:
+    Default: 'OskarKaminski'
+    Description: 'A name of the account on which the repository is created'
+    Type: 'String'
+  RepositoryName:
+    Default: 'oskars-starter'
+    Description: 'A name of the repository with code'
+    Type: 'String'
+  # Access to the repository (+ webhook)
+  OAuthToken:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: 'Github-PAT'
+    Description: 'The name of Github PAT defined in parameters store'
+  GithubSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: 'GITHUB_BE_UPDATED_SECRET'
+    Description: 'The secret used to ensure, that webhook comes from github'
+
+  # Pipeline
+  PipelineName:
+    Default: 'starter_pipeline'
+    Description: 'A name for pipeline'
+    Type: 'String'
+
+
+Resources:
+  StaticHostingDev:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: 'PublicRead'
+      BucketName: !Ref DevBucketName
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+      #      PublicAccessBlockConfiguration:
+      #        PublicAccessBlockConfiguration
+      #      Tags:
+      #        - Tag
+      WebsiteConfiguration:
+        IndexDocument: 'index.html'
+  #        RedirectAllRequestsTo:
+  #          RedirectAllRequestsTo
+  #        RoutingRules:
+  #          - RoutingRule
+
+  PipelineArtifactsStore:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref PipelineArtifactsBucketName
+
+  Pipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: !Ref PipelineName
+      RoleArn: !GetAtt [ Role, Arn ]
+      ArtifactStore:
+        Location: !Ref PipelineArtifactsBucketName
+        Type: S3
+      Stages:
+        - Name: 'Source'
+          Actions:
+            - Name: 'fetch-github'
+              ActionTypeId:
+                Category: 'Source'
+                Owner: 'ThirdParty'
+                Provider: 'GitHub'
+                Version: '1'
+              Configuration:
+                Branch: 'develop'
+                Owner: !Ref RepositoryAccountName
+                OAuthToken: !Ref OAuthToken
+                PollForSourceChanges: 'false'
+                Repo: !Ref RepositoryName
+              OutputArtifacts:
+                - Name: 'TemplateSource'
+
+        - Name: 'Build'
+          Actions:
+            - Name: 'dev-build'
+              RunOrder: 1
+              ActionTypeId:
+                Category: 'Build'
+                Owner: 'AWS'
+                Provider: 'CodeBuild'
+                Version: '1'
+              InputArtifacts:
+                - Name: 'TemplateSource'
+              Configuration:
+                ProjectName: !Ref Build
+              OutputArtifacts:
+                - Name: 'dist'
+
+            - Name: 'dev-deploy'
+              RunOrder: 2
+              ActionTypeId:
+                Category: 'Deploy'
+                Owner: 'AWS'
+                Provider: 'S3'
+                Version: '1'
+              InputArtifacts:
+                - Name: 'dist'
+              Configuration:
+                BucketName: !Ref DevBucketName
+                Extract: 'true'
+
+  Build:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Join [ "-", [ !Ref PipelineName, "Build" ] ]
+      Artifacts:
+        Type: 'CODEPIPELINE'
+      Description: 'Build process to bundle the project'
+      Environment:
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/standard:4.0'
+        Type: 'LINUX_CONTAINER'
+      ServiceRole: !GetAtt [ Role, Arn ]
+      Source:
+        Type: 'CODEPIPELINE'
+        BuildSpec: 'config/cicd/codebuild/buildspec.yml'
+
+  Webhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Name: !Join [ "-", [ !Ref PipelineName, "Webhook" ] ]
+      Authentication: 'GITHUB_HMAC'
+      AuthenticationConfiguration:
+        SecretToken: !Ref GithubSecret
+      Filters:
+        - JsonPath: "$.ref"
+          MatchEquals: 'refs/heads/develop'
+      TargetPipeline: !Ref PipelineName
+      TargetAction: fetch-github
+      TargetPipelineVersion: !GetAtt Pipeline.Version
+      RegisterWithThirdParty: 'true'
+
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Join [ "-", [ !Ref PipelineName, "Role" ] ]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'codepipeline.amazonaws.com'
+                - 'codebuild.amazonaws.com'
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+Outputs:
+  WebhookUrl:
+    Description: 'The url for the github webhook'
+    Value: !GetAtt Webhook.Url

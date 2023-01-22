@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - npm i
+  build:
+    commands:
+      - echo Entered the build phase...
+      - npm run build
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  base-directory: apps
+  files:
+    - '_shell/dist/*'
+    - 'hooks/dist/*'
+    - 'mobx/dist/*'
